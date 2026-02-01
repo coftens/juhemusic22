@@ -1,0 +1,25 @@
+workflows:
+  ios-release-workflow:
+    name: iOS IPA Build (No Codesign)
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    environment:
+      vars:
+        # 你可以在此处添加 SHOREBIRD_TOKEN，或者保持在 Codemagic UI 中设置
+        SHOREBIRD_TOKEN: eyJyZWZyZXNoX3Rva2VuIjoiMS8vMDY1SEZ2XzBTa3h6T0NnWUlBUkFBR0FZU053Ri1MOUlyVmM2aXF2TjFNTmhyVHhTRi1LVlByZkhnTzR6TFVfblVqQlFpaVpTNkdRU2VYcEpxbC1nZDdsTVpWTGk3S19qb3pMZyIsImF1dGhfcHJvdmlkZXIiOiJnb29nbGUifQ==
+      flutter: stable
+      xcode: latest
+    scripts:
+      - name: Get Flutter dependencies
+        script: flutter pub get
+      - name: Build IPA
+        script: |
+          # 核心指令：强制生成 ipa 且跳过签名
+          flutter build ipa --release --no-codesign
+    artifacts:
+      - build/ios/ipa/*.ipa
+    publishing:
+      email:
+        recipients:
+          - zhaozheng982@gmail.com
+        not_on_failure: false
