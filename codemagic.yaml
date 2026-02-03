@@ -14,11 +14,17 @@ workflows:
         script: flutter pub get
       - name: Build and Package IPA
         script: |
-          # 1. 改用 build ios 生成 .app
-          # 显式禁止签名，并捕获错误
+          # 1. 强制禁用 Xcode 自动签名 (这是导致 "Build requires Development Team" 的根源)
+          echo "Patching project.pbxproj to disable signing..."
+          find ios -name "project.pbxproj" -exec sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' {} +
+          find ios -name "project.pbxproj" -exec sed -i '' 's/"CODE_SIGN_IDENTITY\[sdk=iphoneos\*\]" = "iPhone Developer";/"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";/g' {} +
+          find ios -name "project.pbxproj" -exec sed -i '' 's/CODE_SIGNING_REQUIRED = YES;/CODE_SIGNING_REQUIRED = NO;/g' {} +
+          find ios -name "project.pbxproj" -exec sed -i '' 's/CODE_SIGNING_ALLOWED = YES;/CODE_SIGNING_ALLOWED = NO;/g' {} +
+          
+          # 2. 运行构建命令
           flutter build ios --release --no-codesign || { echo "❌ Flutter Build Failed"; exit 1; }
           
-          # 2. 创建 Payload
+          # 3. 创建 Payload
           mkdir -p build/ios/ipa/Payload
           
           # 3. 全局查找 .app 文件
