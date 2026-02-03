@@ -14,8 +14,9 @@ workflows:
         script: flutter pub get
       - name: Build and Package IPA
         script: |
-          # 1. 改用 build ios 生成 .app (比 build ipa 更稳健)
-          flutter build ios --release --no-codesign
+          # 1. 改用 build ios 生成 .app
+          # 显式禁止签名，并捕获错误
+          flutter build ios --release --no-codesign --build-number=$(git rev-list --count HEAD) --build-name="1.0.$(git rev-list --count HEAD)" || { echo "❌ Flutter Build Failed"; exit 1; }
           
           # 2. 创建 Payload
           mkdir -p build/ios/ipa/Payload
