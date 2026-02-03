@@ -193,4 +193,3 @@ class _PermissionPageState extends State<PermissionPage> {
     );
   }
 }
-}
