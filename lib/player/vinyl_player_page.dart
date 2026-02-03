@@ -328,9 +328,10 @@ class _VinylPlayerPageState extends State<VinylPlayerPage>
                         : Column(
                             key: const ValueKey('vinyl'),
                             children: [
-                              SizedBox(
+                                SizedBox(
                                 height: discSize + 20,
                                 child: PageView.builder(
+                                  physics: const _OnePageScrollPhysics(),
                                   controller: _pageCtrl,
                                   onPageChanged: (i) {
                                     if (_isProgrammaticScroll) return;
@@ -1441,4 +1442,51 @@ int _findActiveIndex(List<_LyricLine> lines, int ms) {
     }
   }
   return ans;
+}
+
+class _OnePageScrollPhysics extends PageScrollPhysics {
+  const _OnePageScrollPhysics({super.parent});
+
+  @override
+  _OnePageScrollPhysics applyTo(ScrollPhysics? ancestor) {
+    return _OnePageScrollPhysics(parent: buildParent(ancestor));
+  }
+
+  @override
+  Simulation? createBallisticSimulation(ScrollMetrics position, double velocity) {
+    // If out of bounds, let parent handle (bounce)
+    if ((velocity <= 0.0 && position.pixels <= position.minScrollExtent) ||
+        (velocity >= 0.0 && position.pixels >= position.maxScrollExtent)) {
+      return super.createBallisticSimulation(position, velocity);
+    }
+
+    final tolerance = this.tolerance;
+    final portion = position.pixels / position.viewportDimension;
+    
+    // Explicitly target the immediate next/prev page index
+    // instead of allowing momentum to skip pages.
+    double target;
+    if (velocity.abs() < tolerance.velocity) {
+      // Low velocity: Snap to nearest
+      target = portion.roundToDouble();
+    } else {
+      // High velocity: Restrict to exactly one page flip
+      if (velocity > 0) {
+        // Swipe left (forward)
+        target = portion.floorToDouble() + 1;
+      } else {
+        // Swipe right (backward)
+        target = portion.ceilToDouble() - 1;
+      }
+    }
+    
+    // Clamp to valid range (though it might be overkill since physics handles bounds)
+    // Actually we just want to create spring to that target
+    final targetPixels = target * position.viewportDimension;
+    
+    if (targetPixels != position.pixels) {
+      return ScrollSpringSimulation(spring, position.pixels, targetPixels, velocity, tolerance: tolerance);
+    }
+    return null;
+  }
 }
