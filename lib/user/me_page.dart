@@ -172,74 +172,110 @@ class _MePageState extends State<MePage> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                // Profile section with scaling animation
-                Builder(builder: (context) {
-                  // Scale from 1.4 (sheet at min 0.38) to 0.7 (sheet at max 1.0)
-                  // This creates a larger scale when sheet is down
-                  final t0 = (_sheetExtent - 0.38) / (1.0 - 0.38); // 0 to 1
-                  final scale = 1.4 - t0 * 0.7; // 1.4 -> 0.7
-                  final opacity = (1.0 - t0 * 0.3).clamp(0.0, 1.0); // slight fade
-                  return Transform.scale(
-                    scale: scale.clamp(0.7, 1.4),
-                    child: Opacity(
-                      opacity: opacity,
-                      child: Column(
-                        children: [
-                          GestureDetector(
-                            onTap: _pickAvatar,
-                            child: Container(
-                              width: 78,
-                              height: 78,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.95),
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white.withOpacity(0.35), width: 2),
-                              ),
-                              child: ClipOval(
-                                child: AuthSession.instance.user?.avatarUrl.isNotEmpty == true
-                                    ? CachedCoverImage(
-                                        imageUrl: AuthSession.instance.user!.avatarUrl,
-                                        fit: BoxFit.cover,
-                                      )
-                                    : const Icon(Icons.person, size: 42, color: Colors.black54),
+                // Center the profile section in the remaining space above the sheet
+                Expanded(
+                  child: Center(
+                    child: Builder(builder: (context) {
+                      // t0: 0.0 (sheet at 0.38) -> 1.0 (sheet at 1.0)
+                      final t0 = ((_sheetExtent - 0.38) / (1.0 - 0.38)).clamp(0.0, 1.0);
+                      
+                      // Component Specific Scaling
+                      final avatarScale = (1.4 - t0 * 0.8).clamp(0.6, 1.4);
+                      final textScale = (1.1 - t0 * 0.3).clamp(0.8, 1.1);
+                      final buttonsOpacity = (1.0 - t0 * 1.5).clamp(0.0, 1.0);
+                      final profileOpacity = (1.0 - (t0 - 0.7) / 0.3).clamp(0.0, 1.0); // Start fading out late
+
+                      return Opacity(
+                        opacity: profileOpacity,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Avatar
+                            Transform.scale(
+                              scale: avatarScale,
+                              child: GestureDetector(
+                                onTap: _pickAvatar,
+                                child: Container(
+                                  width: 78,
+                                  height: 78,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.95),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Colors.white.withOpacity(0.35), width: 2),
+                                    boxShadow: [
+                                      BoxShadow(color: Colors.black.withOpacity(0.1 * (1-t0)), blurRadius: 10, offset: const Offset(0, 4)),
+                                    ],
+                                  ),
+                                  child: ClipOval(
+                                    child: AuthSession.instance.user?.avatarUrl.isNotEmpty == true
+                                        ? CachedCoverImage(
+                                            imageUrl: AuthSession.instance.user!.avatarUrl,
+                                            fit: BoxFit.cover,
+                                          )
+                                        : const Icon(Icons.person, size: 42, color: Colors.black54),
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 14),
-                          Text(
-                            AuthSession.instance.user?.username ?? 'deoth5',
-                            style: t.headlineSmall?.copyWith(color: Colors.white, fontWeight: FontWeight.w900),
-                          ),
-                          const SizedBox(height: 6),
-                          Text('最近 & 喜欢（云端同步已开启）', style: t.bodyMedium?.copyWith(color: Colors.white70, fontWeight: FontWeight.w600)),
-                          const SizedBox(height: 14),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                _QuickBtn(icon: Icons.history_rounded, label: '最近', onTap: () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(builder: (_) => LibraryPlaylistPage(title: '最近播放', items: _recents)),
-                                  );
-                                }),
-                                _QuickBtn(icon: Icons.favorite_rounded, label: '喜欢', onTap: () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(builder: (_) => LibraryPlaylistPage(title: '我喜欢的音乐', items: _favorites)),
-                                  );
-                                }),
-                                _QuickBtn(icon: Icons.checkroom_rounded, label: '装扮', onTap: () {}),
-                                _QuickBtn(icon: Icons.settings_rounded, label: '设置', onTap: () {}),
-                                _QuickBtn(icon: Icons.grid_view_rounded, label: '', onTap: () {}),
-                              ],
+                            const SizedBox(height: 16),
+                            
+                            // Username & Bio
+                            Transform.scale(
+                              scale: textScale,
+                              child: Column(
+                                children: [
+                                  Text(
+                                    AuthSession.instance.user?.username ?? 'deoth5',
+                                    style: t.headlineSmall?.copyWith(color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text('最近 & 喜欢（云端同步已开启）', 
+                                    style: t.bodyMedium?.copyWith(color: Colors.white70, fontWeight: FontWeight.w600)),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }),
-                const Spacer(),
+                            const SizedBox(height: 20),
+
+                            // Quick Buttons - Fade and slight slide, but NO overall scale to avoid edge clipping
+                            Opacity(
+                              opacity: buttonsOpacity,
+                              child: Transform.translate(
+                                offset: Offset(0, 10 * t0),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      _QuickBtn(icon: Icons.history_rounded, label: '最近', onTap: () {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(builder: (_) => LibraryPlaylistPage(title: '最近播放', items: _recents)),
+                                        );
+                                      }),
+                                      _QuickBtn(icon: Icons.favorite_rounded, label: '喜欢', onTap: () {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(builder: (_) => LibraryPlaylistPage(title: '我喜欢的音乐', items: _favorites)),
+                                        );
+                                      }),
+                                      _QuickBtn(icon: Icons.checkroom_rounded, label: '装扮', onTap: () {
+                                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('敬请期待')));
+                                      }),
+                                      _QuickBtn(icon: Icons.settings_rounded, label: '设置', onTap: () {
+                                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('设置开发中')));
+                                      }),
+                                      _QuickBtn(icon: Icons.grid_view_rounded, label: '', onTap: () {}),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+                // Place a dummy spacer that the sheet will overlap
+                SizedBox(height: MediaQuery.of(context).size.height * 0.38 - MediaQuery.of(context).padding.top - 80),
               ],
             ),
           ),
