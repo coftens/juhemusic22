@@ -26,6 +26,7 @@ workflows:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGN_STYLE=Manual \
+            CONFIGURATION_BUILD_DIR=$(pwd)/build/ios/iphoneos \
             -destination generic/platform=iOS \
             clean build || { echo "❌ xcodebuild Failed"; exit 1; }
           
