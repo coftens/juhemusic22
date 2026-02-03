@@ -20,29 +20,35 @@ class _PermissionPageState extends State<PermissionPage> {
     setState(() => _requesting = true);
 
     try {
-      // Logic: request Storage and Notification
-      // On Android 13+ (SDK 33), storage is split into images/audio.
-      // permission_handler handles this mapping internally mostly, but let's be explicit.
-
-      // 1. Notifications (Android 13+)
+      // 1. Notifications
       await Permission.notification.request();
 
       // 2. Storage
-      // For generic storage reading, we usually check storage or photos/audio depending on OS
       if (Platform.isAndroid) {
-         // Try to request comprehensive media permissions
-         // We don't strictly block the user if they deny, just request best effort.
          await [
            Permission.storage,
            Permission.audio,
            Permission.photos,
          ].request();
       } else {
-        // iOS or others
         await Permission.storage.request();
       }
 
-      // 3. Mark as accepted regardless of result (so we don't block the user forever)
+      // 3. Network Probe (iOS China specific)
+      // Making a simple head request to trigger the iOS "Wireless Data" system dialog
+      if (Platform.isIOS) {
+        try {
+          final client = HttpClient();
+          client.connectionTimeout = const Duration(seconds: 2);
+          final request = await client.getUrl(Uri.parse('https://www.google.com'));
+          final response = await request.close();
+          debugPrint('iOS Network Probe status: ${response.statusCode}');
+        } catch (e) {
+          debugPrint('iOS Network Probe (expected if denied): $e');
+        }
+      }
+
+      // 4. Mark as accepted
       await ApiConfig.instance.setPermissionsAccepted();
     } finally {
       if (mounted) {
@@ -63,8 +69,8 @@ class _PermissionPageState extends State<PermissionPage> {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Color(0xFFBFB4A6), // Muted brown/gray
-                  Color(0xFF7F7466),
+                  Color(0xFF2C3E50), // Deeper, more "App" feel colors
+                  Color(0xFF000000),
                 ],
               ),
             ),
@@ -72,52 +78,80 @@ class _PermissionPageState extends State<PermissionPage> {
           
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.all(32.0),
+              padding: const EdgeInsets.symmetric(horizontal: 40.0),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const Spacer(),
-                  const Icon(Icons.music_note_rounded, size: 80, color: Colors.white),
-                  const SizedBox(height: 24),
-                  Text(
-                    '欢迎使用 Music',
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  // Styled Logo / Icon
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.music_note_rounded, size: 72, color: Colors.white),
+                  ),
+                  const SizedBox(height: 32),
+                  const Text(
+                    '悦往音乐',
+                    style: TextStyle(
                       color: Colors.white,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 2,
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   Text(
-                    '为了正常播放本地音乐并提供完整的后台播放体验，我们需要申请以下权限：\n\n'
-                    '• 存储权限：扫描本地音乐文件\n'
-                    '• 通知权限：控制后台播放和显示歌词',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: Colors.white.withOpacity(0.9),
-                      height: 1.6,
+                    '身临其境的听歌体验',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.6),
+                      fontSize: 16,
                     ),
                     textAlign: TextAlign.center,
                   ),
+                  const SizedBox(height: 48),
+                  
+                  // Permission List
+                  _buildPermissionItem(
+                    Icons.network_check_rounded,
+                    '联网权限',
+                    '用于在线搜索、播放和下载音乐',
+                  ),
+                  const SizedBox(height: 20),
+                  _buildPermissionItem(
+                    Icons.folder_shared_rounded,
+                    '存储权限',
+                    '用于扫描并播放您设备上的本地音频',
+                  ),
+                  const SizedBox(height: 20),
+                  _buildPermissionItem(
+                    Icons.notifications_active_rounded,
+                    '通知权限',
+                    '用于在通知栏控制播放及显示歌词',
+                  ),
+                  
                   const Spacer(),
                   ElevatedButton(
                     onPressed: _requesting ? null : _handlePermissions,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
-                      foregroundColor: Colors.black87,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      minimumSize: const Size(double.infinity, 56),
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                      minimumSize: const Size(double.infinity, 60),
+                      elevation: 0,
                     ),
                     child: _requesting
                         ? const SizedBox(
                             width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+                            child: LinearProgressIndicator(color: Colors.black, backgroundColor: Colors.transparent),
                           )
                         : const Text('同意并继续', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   ),
-                  const SizedBox(height: 48),
+                  const SizedBox(height: 40),
                 ],
               ),
             ),
@@ -126,4 +160,37 @@ class _PermissionPageState extends State<PermissionPage> {
       ),
     );
   }
+
+  Widget _buildPermissionItem(IconData icon, String title, String desc) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.white.withAlpha(20),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Icon(icon, color: Colors.white70, size: 24),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                desc,
+                style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
 }
